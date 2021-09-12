@@ -1,0 +1,155 @@
+<html>
+
+<head>
+  <title>Canvas tutorial</title>
+  <script type="text/javascript">
+    function Node(parent, bit, num, bits) {
+      // 父节点
+      this.parent = parent;
+      // 深度
+      this.depth = parent ? parent.depth + 1 : 1;
+      // 目标数值
+      this.num = num;
+      // 当前节点值 0 | 1
+      this.bit = bit;
+      // 当前节点10进制值
+      this.value = (parent ? parent.value << 1 : 0) + bit
+      // 是否无效
+      this.disabled = parent ? (parent.disabled || (parent.bit === 1 && bit === 1)) : false
+      // 是否超出
+      if (this.depth < bits) {
+        this.exceed = (this.value << (bits - this.depth)) > num;
+        // 子节点
+        this.left = new Node(this, 0, num, bits);
+        this.right = new Node(this, 1, num, bits);
+      } else {
+        this.exceed = this.value > num;
+      }
+    }
+
+
+    function wrap(ctx, num, { depth, length, width, height }) {
+      ctx.font = '18px 微软雅黑'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+
+      return {
+        draw({ left, right }) {
+          const text = num.toString(2)
+          const textWidth = Math.max(ctx.measureText(text).width, 50)
+          const [x, y] = [(length * width) / 2, height / 2]
+
+          ctx.strokeStyle = "#000"
+          ctx.lineWidth = 4
+
+          ctx.beginPath()
+          ctx.moveTo(x, y)
+          ctx.lineTo(x / 2, y + height)
+          ctx.stroke()
+          this.node(left, x / 2, y + height)
+
+          ctx.beginPath()
+          ctx.moveTo(x, y)
+          ctx.lineTo(x / 2 * 3, y + height)
+          ctx.stroke()
+          this.node(right, x / 2 * 3, y + height)
+
+          this.title(text, textWidth, x, y);
+        },
+        circle({ x, y, text = '', radius = 18, color = '#67C23A', border = 4, borderColor = '#000', textColor = '#fff' }) {
+          ctx.fillStyle = color
+          ctx.strokeStyle = borderColor
+          ctx.lineWidth = border
+
+          ctx.beginPath()
+          ctx.arc(x, y, radius, 0, Math.PI * 2, true)
+          ctx.stroke()
+          ctx.fill()
+
+          ctx.fillStyle = textColor
+          ctx.fillText(text, x, y)
+        },
+        title(text, textWidth, x, y) {
+          ctx.fillStyle = '#909399'
+          ctx.strokeStyle = '#000'
+          ctx.lineWidth = 4
+
+          ctx.beginPath()
+          ctx.arc(x - textWidth / 2, y - 8, 10, Math.PI, Math.PI / 2 * 3, false)
+          ctx.lineTo(x + textWidth / 2 - 10, y - 18)
+          ctx.arc(x + textWidth / 2, y - 8, 10, Math.PI / 2 * 3, 0, false)
+          ctx.lineTo(x + textWidth / 2 + 10, y + 8)
+          ctx.arc(x + textWidth / 2, y + 8, 10, 0, Math.PI / 2, false)
+          ctx.lineTo(x - textWidth / 2 + 10, y + 18)
+          ctx.arc(x - textWidth / 2, y + 8, 10, Math.PI / 2, Math.PI, false)
+          ctx.lineTo(x - textWidth / 2 - 10, y - 8)
+          ctx.stroke()
+          ctx.fill()
+
+          ctx.fillStyle = '#fff'
+          ctx.fillText(text, x, y)
+        },
+
+        node(node, x, y) {
+          const offset = width * length / (1 << node.depth) / 4
+
+          if (node.left) {
+            ctx.strokeStyle = node.left.exceed ? "#909399" : "#000"
+            ctx.beginPath()
+            ctx.moveTo(x, y)
+            ctx.lineTo(x - offset, y + height)
+            ctx.stroke()
+            this.node(node.left, x - offset, y + height)
+          }
+          if (node.right) {
+            ctx.strokeStyle = node.right.exceed ? "#909399" : "#000"
+            ctx.beginPath()
+            ctx.moveTo(x, y)
+            ctx.lineTo(x + offset, y + height)
+            ctx.stroke()
+            this.node(node.right, x + offset, y + height)
+          }
+
+          const color = node.disabled 
+            ? (node.exceed ? 'rgb(253, 226, 226)' : "#F56C6C")
+            : (node.exceed ? 'rgb(225, 243, 216)' : undefined)
+          const textColor = node.exceed ? '#909399' : undefined
+          const borderColor = node.exceed ? '#909399' : undefined
+          
+          this.circle({ x, y, text: node.bit, color, textColor, borderColor })
+        },
+      }
+    }
+
+    function draw(value) {
+      var canvas = document.getElementById('board')
+      // 计算位数，计算尺寸
+      const num = parseInt(value)
+      const bits = num.toString(2).length
+      const depth = bits + 1
+      const length = 1 << bits
+      const height = 100;
+      const width = Math.max(500 / length, 50);
+      console.log({ num, bits, depth, length, height, width })
+
+      // 应用尺寸
+      canvas.setAttribute('width', length * width)
+      canvas.setAttribute('height', depth * height)
+
+      if (canvas.getContext) {
+        const ctx = canvas.getContext('2d')
+        // 构建树
+        const tree = { left: new Node(null, 0, num, bits), right: new Node(null, 1, num, bits) };
+        // 绘制
+        wrap(ctx, num, { depth, length, width, height }).draw(tree)
+      }
+    }
+  </script>
+</head>
+
+<body>
+  <div><input type="number" onchange="draw(this.value)" /></div>
+  <div><canvas id="board" width="150" height="150"></canvas></div>
+</body>
+
+</html>
